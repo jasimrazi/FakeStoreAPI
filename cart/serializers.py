@@ -35,3 +35,4 @@ class CartSerializer(serializers.ModelSerializer):
             CartItem.objects.update_or_create(cart=instance, **item_data)
 
         return instance
+    

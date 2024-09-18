@@ -73,3 +73,24 @@ class GetAllCartItemsView(GenericAPIView):
                 {"message": "No cart items found"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+class GetCartItemUserID(GenericAPIView):
+
+    def get(self, request, userid):
+        # Filter carts by the given user ID
+        carts = Cart.objects.filter(user_id=userid)
+        
+        if carts.exists():
+            # Serialize the filtered carts
+            serializer = CartSerializer(carts, many=True)
+            return Response(
+                {"data": serializer.data},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {"message": "No cart items found for this user"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        
