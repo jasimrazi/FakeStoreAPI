@@ -93,4 +93,44 @@ class GetCartItemUserID(GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+class UpdateCartView(GenericAPIView):
+    def put(self, request, userid):
+        # Retrieve the cart for the user
+        cart = get_object_or_404(Cart, user_id=userid)
+
+        # Get items data from the request
+        items_data = request.data.get('items', [])
+
+        # Check if items_data is empty or not a list
+        if not isinstance(items_data, list):
+            return Response({"error": "Invalid data format. 'items' should be a list."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not items_data:
+            return Response({"message": "No items provided to update the cart."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Clear existing cart items
+        cart.items.clear()
+
+        # Process each item in the request
+        for item_data in items_data:
+            product_id = item_data.get('product_id')
+            quantity = item_data.get('quantity')
+
+            if not product_id or not quantity:
+                return Response({"error": "Both 'product_id' and 'quantity' are required for each item."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get or create CartItem
+            product = get_object_or_404(Product, id=product_id)
+            cart_item, created = CartItem.objects.get_or_create(product=product, defaults={'quantity': quantity})
+
+            if not created:
+                # Update quantity if item already exists
+                cart_item.quantity = quantity
+                cart_item.save()
+
+            # Add item to the cart
+            cart.items.add(cart_item)
+
+        return Response({"message": "Cart updated successfully"}, status=status.HTTP_200_OK)
+    
         
