@@ -6,5 +6,5 @@ urlpatterns = [
     path("add/<int:userid>", views.AddToCartView.as_view()),
     path("user/<int:userid>", views.GetCartItemUserID.as_view()),
     path("update/<int:userid>", views.UpdateCartView.as_view()),
-    
+    path("delete/<int:userid>", views.DeleteCartView.as_view()),
 ]

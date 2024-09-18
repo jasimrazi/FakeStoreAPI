@@ -134,3 +134,22 @@ class UpdateCartView(GenericAPIView):
         return Response({"message": "Cart updated successfully"}, status=status.HTTP_200_OK)
     
         
+class DeleteCartView(GenericAPIView):
+    def delete(self, request, userid):
+        # Check if the user exists
+        if not Register.objects.filter(id=userid).exists():
+            return Response({"message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Retrieve the cart for the user
+        cart = Cart.objects.filter(user_id=userid).first()
+        
+        if not cart:
+            return Response({"message": "Cart does not exist for this user"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Clear all items from the cart
+        cart.items.clear()
+
+        # Delete the cart
+        cart.delete()
+
+        return Response({"message": "Cart deleted successfully"}, status=status.HTTP_200_OK)
