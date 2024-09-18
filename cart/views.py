@@ -1,39 +1,75 @@
-from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from products.models import Product
 from .models import Cart, CartItem
-from .serializers import CartSerializer, CartItemSerializer
-from user.models import Register  # Import the Register model for user
-from products.models import Product  # Import the Product model
+from user.models import Register 
+from . serializers import CartSerializer
 
 
 class AddToCartView(GenericAPIView):
-    serializer_class = CartSerializer
-
     def post(self, request, userid):
-        try:
-            # Check if the user exists based on the passed userid
-            user = Register.objects.get(id=userid)
-        except Register.DoesNotExist:
-            return Response({"Message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Get the product_id and quantity from the request data
+        # Get product ID and quantity from the request
         product_id = request.data.get('product_id')
-        quantity = request.data.get('quantity', 1)  # Default quantity to 1 if not provided
+        quantity = request.data.get('quantity', 1)  # Default to 1 if not provided
 
-        try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return Response({"Message": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+        # Ensure product ID is provided
+        if not product_id:
+            return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create or get the CartItem
-        cart_item, created = CartItem.objects.get_or_create(product=product, quantity=quantity)
+        # Retrieve the product, or return a 404 error if not found
+        product = get_object_or_404(Product, id=product_id)
 
-        # Create or get the Cart for the user
-        cart, created = Cart.objects.get_or_create(product=product, defaults={'items': cart_item})
+        # Retrieve the user, or return a 404 error if user does not exist
+        user = get_object_or_404(Register, id=userid)
+
+        # Create or get the cart for the user
+        cart, created = Cart.objects.get_or_create(user=user, product=product)
+
+        # Create a new CartItem or update an existing one if the product is already in the cart
+        cart_item, item_created = CartItem.objects.get_or_create(product=product, defaults={'quantity': quantity})
+        
+        if not item_created:
+            cart_item.quantity += quantity  # Update quantity if item already exists
+            cart_item.save()
+
+        # Add the item to the cart
         cart.items.add(cart_item)
+        cart.save()
 
-        return Response(
-            {"Message": "Item added to cart successfully"},
-            status=status.HTTP_200_OK,
-        )
+        return Response({"message": "Item added to cart successfully"}, status=status.HTTP_201_CREATED)
+    
+class GetAllCartItemsView(GenericAPIView):
+    def get(self, request):
+        # Retrieve query parameters for limit and sort
+        limit = request.GET.get('limit', '10')  # Default limit to 10
+        sort = request.GET.get('sort', 'asc')   # Default sort to ascending
+
+        # Validate and convert limit to integer
+        try:
+            limit = int(limit)
+        except ValueError:
+            limit = 10  # Default to 10 if conversion fails
+
+        # Determine the sort order
+        if sort == 'desc':
+            carts = Cart.objects.all().order_by('-date_created')
+        else:
+            carts = Cart.objects.all().order_by('date_created')  # Default ascending
+
+        # Apply the limit to the queryset
+        carts = carts[:limit]
+
+        # Serialize the carts
+        if carts.exists():
+            serializer = CartSerializer(carts, many=True)
+            return Response(
+                {"data": serializer.data, "message": "Fetch successful"},
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {"message": "No cart items found"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
