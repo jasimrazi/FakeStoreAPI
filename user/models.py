@@ -12,6 +12,16 @@ class Register(models.Model):
     name = models.CharField(max_length=50)
     email = models.EmailField(max_length=50, unique=True)
     number = models.CharField(max_length=10)
-    role = models.CharField(max_length=10)
+    role = models.CharField(max_length=10, default="user")
     password = models.CharField(max_length=50)
     loginid = models.OneToOneField(Login,on_delete=models.CASCADE)
+
+class MerchantRegister(models.Model):
+    name = models.CharField(max_length=50)
+    email = models.EmailField(max_length=50, unique=True)
+    number = models.CharField(max_length=10)
+    role = models.CharField(max_length=10, default="merchant")
+    password = models.CharField(max_length=50)
+    store_name = models.CharField(max_length=100)
+    business_license = models.CharField(max_length=100)
+    loginid = models.OneToOneField(Login, on_delete=models.CASCADE)

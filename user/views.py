@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.generics import GenericAPIView
-from .serializers import RegisterSerializer, LoginSerializer
-from .models import Register, Login
+from .serializers import RegisterSerializer, LoginSerializer, MerchantRegisterSerializer
+from .models import Register, Login, MerchantRegister
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -21,7 +21,7 @@ class AddUserView(GenericAPIView):
         email = request.data.get("email")
         number = request.data.get("number")
         password = request.data.get("password")
-        role = "user"
+        role = "user"  # Hardcoded to "user"
 
         # Step 1: Validate registration fields first
         if not name or not email or not number or not password:
@@ -61,7 +61,7 @@ class AddUserView(GenericAPIView):
             data={
                 "email": email,
                 "password": password,
-                "role": role,
+                "role": role,  # Hardcoded to "user"
                 "name": name,
                 "number": number,
                 "loginid": loginid,
@@ -71,7 +71,7 @@ class AddUserView(GenericAPIView):
         if register_serializer.is_valid():
             register_serializer.save()
             return Response(
-                {"Message": "Account registered successfully"},
+                {"Message": "User account registered successfully"},
                 status=status.HTTP_200_OK,
             )
         else:
@@ -82,6 +82,85 @@ class AddUserView(GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+class AddMerchantView(GenericAPIView):
+    def get_serializer_class(self):
+        # Return the MerchantRegisterSerializer for merchant registration
+        return MerchantRegisterSerializer
+
+    def post(self, request):
+        # Retrieve the input fields from the request
+        loginid = ""
+        name = request.data.get("name")
+        email = request.data.get("email")
+        number = request.data.get("number")
+        password = request.data.get("password")
+        store_name = request.data.get("store_name")
+        business_license = request.data.get("business_license")
+        role = "merchant"  # Hardcoded to "merchant"
+
+        # Step 1: Validate registration fields first
+        if not name or not email or not number or not password or not store_name or not business_license:
+            return Response(
+                {"Message": "All fields (name, email, number, password, store_name, business_license) are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Step 2: Check for duplicate email and number
+        if MerchantRegister.objects.filter(email=email).exists():
+            return Response(
+                {"Message": "Duplicate email found"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        elif MerchantRegister.objects.filter(number=number).exists():
+            return Response(
+                {"Message": "Duplicate number found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Step 3: Validate and create login
+        login_serializer = LoginSerializer(
+            data={"email": email, "password": password, "role": role}
+        )
+
+        if login_serializer.is_valid():
+            l = login_serializer.save()
+            loginid = l.id  # Store the login ID for merchant registration
+        else:
+            return Response(
+                {"Message": "Login failed", "Errors": login_serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Step 4: Handle merchant registration with the validated login id
+        merchant_serializer = MerchantRegisterSerializer(
+            data={
+                "email": email,
+                "password": password,
+                "role": role,  # Hardcoded to "merchant"
+                "name": name,
+                "number": number,
+                "store_name": store_name,
+                "business_license": business_license,
+                "loginid": loginid,
+            }
+        )
+
+        if merchant_serializer.is_valid():
+            merchant_serializer.save()
+            return Response(
+                {"Message": "Merchant account registered successfully"},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {
+                    "Message": "Registration failed",
+                    "Errors": merchant_serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
             
 class LoginUserView(GenericAPIView):
     serializer_class = LoginSerializer
