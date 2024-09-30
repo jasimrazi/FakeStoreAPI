@@ -166,8 +166,8 @@ class LoginUserView(GenericAPIView):
     serializer_class = LoginSerializer
 
     def post(self, request):
-        email = request.data.get("email")
-        password = request.data.get("password")
+        email = request.data.get("email", "").strip()
+        password = request.data.get("password", "").strip()
 
         # Check if email or password is empty
         if not email or not password:
@@ -176,40 +176,37 @@ class LoginUserView(GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check for the user in the database
-        a = Login.objects.filter(email=email, password=password)
-        
-        # If no matching user is found, return an error
-        if not a.exists():
+
+        # Check for the user in the Login model
+        user = Login.objects.filter(email=email, password=password).first()
+
+        if user is None:
             return Response(
                 {"Message": "Incorrect email or password."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
-        # If user is found, proceed to serialize the data
-        b = LoginSerializer(a, many=True)
-        for i in b.data:
-            loginid = i["id"]
-            role = i["role"]
-            # Fetch additional user details from the Register model
-            c = Register.objects.filter(loginid=loginid).values()
-            for i in c:
-                name = i["name"]
-                number = i["number"]
-        
+
+        # If user is found, get the loginid and role
+        loginid = user.loginid  # Get the loginid from the Login model
+        role = user.role  # Get the role from the Login model
+
+        print(f"Login successful for email: {email}, loginid: {loginid}, role: {role}")  # Debugging line
+
         # Return a successful response with user details
         return Response(
             {
                 "data": {
-                    "loginid": loginid,
-                    "name": name,
-                    "number": number,
+                    "loginid": str(loginid),  # Ensure loginid is serialized as a string
                     "role": role,
                     "email": email,
                 }
             },
             status=status.HTTP_200_OK,
         )
+
+
+
+
         
 class GetAllUserView(GenericAPIView):
     serializer_class = RegisterSerializer
