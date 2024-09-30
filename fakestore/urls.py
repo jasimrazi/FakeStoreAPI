@@ -15,12 +15,32 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path  # Import re_path here
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
 
+# Define the schema view
+schema_view = get_schema_view(
+    openapi.Info(
+        title="FakeStore API",
+        default_version='v1',
+        description="API description",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@dummy.local"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+)
+
+# Define the URL patterns
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('products/',include('products.urls')),
-    path('user/',include('user.urls')),
-    path('carts/',include('cart.urls')),
-    path('favourites/',include('favourite.urls')),
+    path('products/', include('products.urls')),
+    path('user/', include('user.urls')),
+    path('carts/', include('cart.urls')),
+    path('favourites/', include('favourite.urls')),
+    re_path(r'^playground/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    re_path(r'^docs/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
