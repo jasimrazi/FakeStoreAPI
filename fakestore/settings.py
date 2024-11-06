@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'cart',
     'favourite',
     'review',
+    'address',
     'drf_yasg',
     'cloudinary',
     'cloudinary_storage',
