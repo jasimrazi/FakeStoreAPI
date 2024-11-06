@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from . serialzers import FavouriteSerializer
+from .serializers import FavouriteSerializer
 from products.models import Product
 from .models import Favourite
 from user.models import Register
@@ -10,7 +10,7 @@ from user.models import Register
 
 # View to add a product to favourites
 class AddToFavouritesView(GenericAPIView):
-    def post(self, request, userid):
+    def post(self, request, loginid):
         # Get product ID from the request
         product_id = request.data.get('product_id')
 
@@ -21,23 +21,30 @@ class AddToFavouritesView(GenericAPIView):
         # Retrieve the product, or return a 404 error if not found
         product = get_object_or_404(Product, id=product_id)
 
-        # Retrieve the user, or return a 404 error if user does not exist
-        user = get_object_or_404(Register, id=userid)
+        # Retrieve the user based on loginid, or return a 404 error if user does not exist
+        user = get_object_or_404(Register, loginid__loginid=loginid)
 
-        # Create or get the favourite for the user and product
+        # Check if the favourite exists
         favourite, created = Favourite.objects.get_or_create(user=user, product=product)
 
-        if created:
-            return Response({"message": "Product added to favourites successfully"}, status=status.HTTP_201_CREATED)
+        if not created:
+            # If the product is already in favourites, remove it (toggle off)
+            favourite.delete()
+            return Response({"message": "Product removed from favourites"}, status=status.HTTP_200_OK)
         else:
-            return Response({"message": "Product is already in favourites"}, status=status.HTTP_200_OK)
+            # Product was added to favourites (toggle on)
+            return Response({"message": "Product added to favourites"}, status=status.HTTP_201_CREATED)
+
 
 
 # View to get all favourite items of a user
-class GetFavouritesByUserIDView(GenericAPIView):
-    def get(self, request, userid):
-        # Retrieve the favourites for the given user ID
-        favourites = Favourite.objects.filter(user_id=userid)
+class GetFavouritesByLoginIDView(GenericAPIView):
+    def get(self, request, loginid):
+        # Retrieve the user based on loginid
+        user = get_object_or_404(Register, loginid__loginid=loginid)
+
+        # Retrieve the favourites for the given user
+        favourites = Favourite.objects.filter(user=user)
 
         if favourites.exists():
             # Serialize the favourites
@@ -49,9 +56,9 @@ class GetFavouritesByUserIDView(GenericAPIView):
 
 # View to delete a product from a user's favourites
 class DeleteFavouriteView(GenericAPIView):
-    def delete(self, request, userid, product_id):
-        # Retrieve the user, or return a 404 error if user does not exist
-        user = get_object_or_404(Register, id=userid)
+    def delete(self, request, loginid, product_id):
+        # Retrieve the user based on loginid
+        user = get_object_or_404(Register, loginid__loginid=loginid)
 
         # Retrieve the favourite product for the user
         favourite = Favourite.objects.filter(user=user, product_id=product_id).first()
