@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import Cart, CartItem
 from products.models import Product
-from user.models import Login  # Assuming Login is the model with loginid
 
 class CartItemSerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
@@ -11,30 +10,23 @@ class CartItemSerializer(serializers.ModelSerializer):
         fields = ['product', 'quantity']
 
 class CartSerializer(serializers.ModelSerializer):
-    user_loginid = serializers.CharField(source='user.loginid', read_only=True)  # Use loginid instead of user_id
-    items = CartItemSerializer(many=True)  # Include items for serialization
+    # Accessing the nested loginid attribute
+    user_loginid = serializers.CharField(source='user.loginid.loginid', read_only=True)  
+    cart_items = CartItemSerializer(many=True, read_only=True)  # Use 'cart_items' to match related_name in Cart model
 
     class Meta:
         model = Cart
-        fields = ['user_loginid', 'date_created', 'items']
-
-    def create(self, validated_data):
-        items_data = validated_data.pop('items', [])
-        cart = Cart.objects.create(**validated_data)
-
-        for item_data in items_data:
-            CartItem.objects.create(cart=cart, **item_data)
-
-        return cart
+        fields = ['user_loginid', 'date_created', 'cart_items']
 
     def update(self, instance, validated_data):
-        items_data = validated_data.pop('items', [])
-        instance.save()  # Save instance to update other fields if necessary
+        # Remove existing cart items
+        instance.cart_items.clear()
 
-        # Clear existing items before adding new ones
-        instance.items.clear()
-
+        # Extract and add new items to the cart
+        items_data = validated_data.pop('cart_items', [])
         for item_data in items_data:
             CartItem.objects.create(cart=instance, **item_data)
 
+        # Save any additional fields
+        instance.save()
         return instance

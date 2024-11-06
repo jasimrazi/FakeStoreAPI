@@ -93,20 +93,31 @@ class GetAllCartItemsView(GenericAPIView):
             
 class GetCartItemUserID(GenericAPIView):
     def get(self, request, loginid):
+        print("Received login ID:", loginid)  # Debugging line
+
         # Retrieve the user based on loginid
         try:
-            user = Register.objects.get(loginid=loginid)  # This correctly gets the user by loginid
+            user = Register.objects.get(loginid__loginid=loginid)  # Correct way to access the loginid through related model
+            print("Found user:", user)  # Debugging line
         except Register.DoesNotExist:
             return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Now use the user instance to filter carts
         carts = Cart.objects.filter(user=user)
+        print("Retrieved carts:", carts)  # Debugging line
+
+        for cart in carts:
+            print(f"Cart {cart.id} items:", cart.cart_items.all())  # Debugging line to check if cart has items
 
         if carts.exists():
+            # Serialize the cart including its related CartItem instances
             serializer = CartSerializer(carts, many=True)
             return Response({"data": serializer.data}, status=status.HTTP_200_OK)
         else:
             return Response({"message": "No cart items found for this user"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
         
 class UpdateCartView(GenericAPIView):
