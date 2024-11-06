@@ -281,7 +281,7 @@ class UpdateUserView(GenericAPIView):
                 "email": email,
                 "number": number,
                 "password": password,
-                "loginid": loginid,
+                # "loginid": loginid,
             }
 
             # Pass the existing instance and updated data to the serializer

@@ -3,7 +3,11 @@ from rest_framework.generics import GenericAPIView
 from .serializers import ProductSerializer
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Product
+from .models import Product, ProductImage, Size
+from django.conf import settings
+import cloudinary   
+import cloudinary.uploader
+import cloudinary.api
 
 
 # Create your views here.
@@ -53,30 +57,78 @@ class AddProductView(GenericAPIView):
         title = request.data.get("title")
         description = request.data.get("description")
         price = request.data.get("price")
+        brand = request.data.get("brand")
         category = request.data.get("category")
-        image = request.data.get("image")
+        sizes = request.data.getlist("sizes")  # Expecting sizes as a list
+        images = request.FILES.getlist("images")  # Expecting images as a list of files
 
+        # Initial product data without images and sizes
         product_data = {
             "title": title,
             "description": description,
             "price": price,
+            "brand": brand,
             "category": category,
-            "image": image,
         }
+        
+        print("Received Product Data:")
+        print(f"Title: {title}")
+        print(f"Description: {description}")
+        print(f"Price: {price}")
+        print(f"Brand: {brand}")
+        print(f"Category: {category}")
+        print(f"Sizes: {sizes}")
+        print(f"Images: {images}")
 
-        product_serializer = ProductSerializer(data=product_data)
+        # Create product instance
+        serializer = self.serializer_class(data=product_data)
+        if serializer.is_valid():
+            product = serializer.save()
+            print("Product instance created:", product.title)
 
-        if product_serializer.is_valid():
-            product_serializer.save()
-            return Response(
-                {"Message": "Product added successfully"}, status=status.HTTP_200_OK
-            )
+            # Handle sizes
+            size_instances = []
+            for size_name in sizes:
+                print("Processing size:", size_name)
+                size_instance, _ = Size.objects.get_or_create(size=size_name)
+                size_instances.append(size_instance)
+
+            # Assign sizes to product
+            product.sizes.set(size_instances)
+            print("Sizes set for product:", [size.size for size in size_instances])
+
+            # Handle images
+            image_urls = []
+            for image in images:
+                print("Processing image:", image)
+                try:
+                    upload_data = cloudinary.uploader.upload(image)
+                    image_url = upload_data.get('url')
+                    image_urls.append(image_url)
+                    ProductImage.objects.create(product=product, image_url=image_url)
+                    
+                    # Log Cloudinary response for debugging
+                    print("Cloudinary upload response:", upload_data)
+
+                except Exception as e:
+                    print("Cloudinary upload failed:", str(e))
+                    return Response({'message': 'Cloudinary upload failed', 'success': 0}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            response_serializer = self.serializer_class(product)
+            return Response({
+                'data': response_serializer.data,
+                'message': 'Product added successfully',
+                'images': image_urls,
+                'success': 1
+            }, status=status.HTTP_201_CREATED)
 
         else:
-            return Response(
-                {"Message": "Fields empty", "Errors": product_serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            print("Validation failed:", serializer.errors)
+            return Response({
+                'data': serializer.errors,
+                'message': 'Validation failed',
+                'success': 0
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProductIDView(GenericAPIView):

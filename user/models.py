@@ -6,12 +6,10 @@ class Login(models.Model):
     email = models.EmailField(max_length=50)
     password = models.CharField(max_length=50)
     role = models.CharField(max_length=10)
-    loginid = models.CharField(max_length=100, unique=True, default=uuid.uuid4, editable=False)
+    loginid = models.CharField(max_length=36, unique=True, default=uuid.uuid4)  # Correct way to set UUID as default
 
     def save(self, *args, **kwargs):
-        if not self.loginid:
-            self.loginid = str(uuid.uuid4())  # Generate a unique login ID if it doesn't exist
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # No need to check loginid here
 
 
 class Register(models.Model):

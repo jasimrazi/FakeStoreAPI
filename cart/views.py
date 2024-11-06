@@ -4,12 +4,12 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from products.models import Product
 from .models import Cart, CartItem
-from user.models import Register 
+from user.models import Register, Login
 from . serializers import CartSerializer
 
 
 class AddToCartView(GenericAPIView):
-    def post(self, request, userid):
+    def post(self, request, loginid):
         # Get product ID and quantity from the request
         product_id = request.data.get('product_id')
         quantity = request.data.get('quantity', 1)  # Default to 1 if not provided
@@ -21,22 +21,23 @@ class AddToCartView(GenericAPIView):
         # Retrieve the product, or return a 404 error if not found
         product = get_object_or_404(Product, id=product_id)
 
-        # Retrieve the user, or return a 404 error if user does not exist
-        user = get_object_or_404(Register, id=userid)
+        # Retrieve the user from Register, or return a 404 error if user does not exist
+        user = get_object_or_404(Register, loginid=loginid)
 
-        # Create or get the cart for the user
-        cart, created = Cart.objects.get_or_create(user=user, product=product)
+        # Create or get the cart for the user (don't create a new cart for each product)
+        cart, created = Cart.objects.get_or_create(user=user)
 
-        # Create a new CartItem or update an existing one if the product is already in the cart
-        cart_item, item_created = CartItem.objects.get_or_create(product=product, defaults={'quantity': quantity})
-        
+        # Check if the product is already in the cart
+        cart_item, item_created = CartItem.objects.get_or_create(cart=cart, product=product)
+
         if not item_created:
-            cart_item.quantity += quantity  # Update quantity if item already exists
+            # If the cart item already exists, update its quantity
+            cart_item.quantity += quantity
             cart_item.save()
-
-        # Add the item to the cart
-        cart.items.add(cart_item)
-        cart.save()
+        else:
+            # Set the quantity for the new cart item
+            cart_item.quantity = quantity
+            cart_item.save()
 
         return Response({"message": "Item added to cart successfully"}, status=status.HTTP_201_CREATED)
     
@@ -75,28 +76,27 @@ class GetAllCartItemsView(GenericAPIView):
             )
             
 class GetCartItemUserID(GenericAPIView):
+    def get(self, request, loginid):
+        # Retrieve the user based on loginid
+        try:
+            user = Register.objects.get(loginid=loginid)  # This correctly gets the user by loginid
+        except Register.DoesNotExist:
+            return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    def get(self, request, userid):
-        # Filter carts by the given user ID
-        carts = Cart.objects.filter(user_id=userid)
-        
+        # Now use the user instance to filter carts
+        carts = Cart.objects.filter(user=user)
+
         if carts.exists():
-            # Serialize the filtered carts
             serializer = CartSerializer(carts, many=True)
-            return Response(
-                {"data": serializer.data},
-                status=status.HTTP_200_OK,
-            )
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
         else:
-            return Response(
-                {"message": "No cart items found for this user"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"message": "No cart items found for this user"}, status=status.HTTP_400_BAD_REQUEST)
+
         
 class UpdateCartView(GenericAPIView):
-    def put(self, request, userid):
+    def put(self, request, loginid):
         # Retrieve the cart for the user
-        cart = get_object_or_404(Cart, user_id=userid)
+        cart = get_object_or_404(Cart, loginid=loginid)
 
         # Get items data from the request
         items_data = request.data.get('items', [])
@@ -135,13 +135,13 @@ class UpdateCartView(GenericAPIView):
     
         
 class DeleteCartView(GenericAPIView):
-    def delete(self, request, userid):
+    def delete(self, request, loginid):
         # Check if the user exists
-        if not Register.objects.filter(id=userid).exists():
+        if not Register.objects.filter(id=loginid).exists():
             return Response({"message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
         # Retrieve the cart for the user
-        cart = Cart.objects.filter(user_id=userid).first()
+        cart = Cart.objects.filter(user_id=loginid).first()
         
         if not cart:
             return Response({"message": "Cart does not exist for this user"}, status=status.HTTP_404_NOT_FOUND)

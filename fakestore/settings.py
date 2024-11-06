@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 
+import cloudinary
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,6 +45,8 @@ INSTALLED_APPS = [
     'cart',
     'favourite',
     'drf_yasg',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 MIDDLEWARE = [
@@ -129,3 +133,23 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Cloudinary Configuration
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'fakestore',
+    'API_KEY': '398226251987374',
+    'API_SECRET': 'l8mVEVn7tjkH2z3bNOpIX0n2gE4'
+}
+
+cloudinary.config(
+    cloud_name='fakestore',
+    api_key='398226251987374',
+    api_secret='l8mVEVn7tjkH2z3bNOpIX0n2gE4'
+)
+
+# Set Cloudinary as the default storage for media files
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# Optional: Define the URL where Cloudinary serves your media files
+MEDIA_URL = '/product/'
+
