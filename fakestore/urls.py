@@ -44,6 +44,7 @@ urlpatterns = [
     path('reviews/', include('review.urls')),
     path('address/', include('address.urls')),
     path('order/', include('order.urls')),
+    path('search/', include('search.urls')),
     re_path(r'^playground/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     re_path(r'^docs/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]

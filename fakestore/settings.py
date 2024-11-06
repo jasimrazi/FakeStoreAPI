@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'review',
     'address',
     'order',
+    'search',
     'drf_yasg',
     'cloudinary',
     'cloudinary_storage',
