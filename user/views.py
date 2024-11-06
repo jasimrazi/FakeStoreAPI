@@ -189,6 +189,7 @@ class LoginUserView(GenericAPIView):
         # If user is found, get the loginid and role
         loginid = user.loginid  # Get the loginid from the Login model
         role = user.role  # Get the role from the Login model
+        name = user.register.name
 
         print(f"Login successful for email: {email}, loginid: {loginid}, role: {role}")  # Debugging line
 
@@ -199,6 +200,7 @@ class LoginUserView(GenericAPIView):
                     "loginid": str(loginid),  # Ensure loginid is serialized as a string
                     "role": role,
                     "email": email,
+                    "name": name,
                 }
             },
             status=status.HTTP_200_OK,
