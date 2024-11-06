@@ -10,36 +10,52 @@ from . serializers import CartSerializer
 
 class AddToCartView(GenericAPIView):
     def post(self, request, loginid):
+        print("Received login ID from request:", loginid)  # Debug start
+
         # Get product ID and quantity from the request
         product_id = request.data.get('product_id')
-        quantity = request.data.get('quantity', 1)  # Default to 1 if not provided
-
+        quantity = int(request.data.get('quantity', 1))  # Default to 1 if not provided
+        
         # Ensure product ID is provided
         if not product_id:
             return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        print('Product ID:', product_id)  # Debug: Product ID check
 
         # Retrieve the product, or return a 404 error if not found
         product = get_object_or_404(Product, id=product_id)
+        print('Retrieved Product:', product.title)  # Debug: Product retrieval confirmation
 
-        # Retrieve the user from Register, or return a 404 error if user does not exist
-        user = get_object_or_404(Register, loginid=loginid)
+        # Retrieve the Login instance, or return a 404 error if not found
+        login_instance = get_object_or_404(Login, loginid=loginid)
+        print("Retrieved login instance:", login_instance.loginid)  # Debug: Login ID match check
+
+        # Retrieve the associated Register instance
+        user = login_instance.register  # Access the related Register instance
+        print("Retrieved user from Register model:", user.name)  # Debug: Register instance check
 
         # Create or get the cart for the user (don't create a new cart for each product)
         cart, created = Cart.objects.get_or_create(user=user)
+        print("Cart retrieved or created for user:", cart.id)  # Debug: Cart retrieval or creation
 
         # Check if the product is already in the cart
         cart_item, item_created = CartItem.objects.get_or_create(cart=cart, product=product)
-
+        
         if not item_created:
             # If the cart item already exists, update its quantity
             cart_item.quantity += quantity
             cart_item.save()
+            print("Updated quantity for existing cart item:", cart_item.quantity)  # Debug: Quantity update
         else:
             # Set the quantity for the new cart item
             cart_item.quantity = quantity
             cart_item.save()
+            print("New cart item created with quantity:", cart_item.quantity)  # Debug: New item creation
 
         return Response({"message": "Item added to cart successfully"}, status=status.HTTP_201_CREATED)
+
+
+
     
 class GetAllCartItemsView(GenericAPIView):
     def get(self, request):
