@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from .serializers import AddressSerializer
+from .models import Address  # Import Address model
 from user.models import Register
 
 class AddAddressView(GenericAPIView):
@@ -16,13 +17,20 @@ class AddAddressView(GenericAPIView):
 
         # Create a mutable copy of the request data and add the user to it
         mutable_data = request.data.copy()
-        mutable_data['user'] = user.id  # Add the user to the address data
+        mutable_data['user'] = user.id
+
+        # Check if this address is being added as the default
+        is_default = mutable_data.get('is_default', False)
+
+        if is_default:
+            # If a default address already exists for this user, set it to non-default
+            Address.objects.filter(user=user, is_default=True).update(is_default=False)
 
         # Create the address instance using the modified data
         serializer = self.get_serializer(data=mutable_data)
         
         if serializer.is_valid():
-            serializer.save()  # Save the address instance
+            serializer.save()
             return Response({"message": "Address added successfully"}, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
