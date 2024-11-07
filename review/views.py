@@ -38,3 +38,21 @@ class AddReviewView(GenericAPIView):
             return Response({"message": "Review added successfully"}, status=status.HTTP_201_CREATED)
         else:
             return Response({"message": "Review updated successfully"}, status=status.HTTP_200_OK)
+        
+class GetReviewView(GenericAPIView):
+    serializer_class = ReviewSerializer
+
+    def get(self, request, product_id):
+        # Retrieve the product based on product_id
+        product = get_object_or_404(Product, id=product_id)
+
+        # Fetch all reviews for the specified product
+        reviews = Review.objects.filter(product=product)
+
+        # Check if there are no reviews for the product
+        if not reviews.exists():
+            return Response({"message": "No reviews found for this product"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize and return the reviews
+        serializer = self.get_serializer(reviews, many=True)
+        return Response({"reviews": serializer.data}, status=status.HTTP_200_OK)
