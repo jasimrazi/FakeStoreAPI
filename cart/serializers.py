@@ -1,32 +1,35 @@
 from rest_framework import serializers
-from .models import Cart, CartItem
-from products.models import Product
+from products.models import Product, ProductImage  # For Product and ProductImage
+from cart.models import Cart, CartItem  # For Cart and CartItem
 
+from user.models import Register
+
+# Serializer for ProductImage
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['image_url']
+
+# Serializer for Product Details (name, price, images)
+class ProductDetailsSerializer(serializers.ModelSerializer):
+    images = ProductImageSerializer(many=True)  # Serialize multiple images
+
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'price', 'images']
+
+# Serializer for CartItem (each cart item contains a product and quantity)
 class CartItemSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    product = ProductDetailsSerializer()  # Serialize product details
 
     class Meta:
         model = CartItem
         fields = ['product', 'quantity']
 
+# Serializer for Cart (contains cart items)
 class CartSerializer(serializers.ModelSerializer):
-    # Accessing the nested loginid attribute
-    user_loginid = serializers.CharField(source='user.loginid.loginid', read_only=True)  
-    cart_items = CartItemSerializer(many=True, read_only=True)  # Use 'cart_items' to match related_name in Cart model
+    cart_items = CartItemSerializer(many=True)  # Serialize multiple cart items
 
     class Meta:
         model = Cart
-        fields = ['user_loginid', 'date_created', 'cart_items']
-
-    def update(self, instance, validated_data):
-        # Remove existing cart items
-        instance.cart_items.clear()
-
-        # Extract and add new items to the cart
-        items_data = validated_data.pop('cart_items', [])
-        for item_data in items_data:
-            CartItem.objects.create(cart=instance, **item_data)
-
-        # Save any additional fields
-        instance.save()
-        return instance
+        fields = ['id', 'cart_items']
