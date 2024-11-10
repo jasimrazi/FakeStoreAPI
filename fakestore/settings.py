@@ -89,10 +89,15 @@ WSGI_APPLICATION = 'fakestore.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres.ifnrdroobpwqnezhiphi',
+        'PASSWORD': 'Jy5y6SlBi2VzH9I1',
+        'HOST': 'aws-0-ap-south-1.pooler.supabase.com',  # replace with your Supabase host
+        'PORT': '6543',  # Supabase default port for PostgreSQL
     }
 }
+
 
 
 # Password validation
