@@ -9,21 +9,12 @@ from . serializers import CartSerializer
 
 
 class AddToCartView(GenericAPIView):
-    def post(self, request, loginid):
+    def post(self, request, loginid, productid):
         print("Received login ID from request:", loginid)  # Debug start
-
-        # Get product ID and quantity from the request
-        product_id = request.data.get('product_id')
-        quantity = int(request.data.get('quantity', 1))  # Default to 1 if not provided
-        
-        # Ensure product ID is provided
-        if not product_id:
-            return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        print('Product ID:', product_id)  # Debug: Product ID check
+        print("Received product ID from URL:", productid)  # Debug: Product ID check
 
         # Retrieve the product, or return a 404 error if not found
-        product = get_object_or_404(Product, id=product_id)
+        product = get_object_or_404(Product, id=productid)
         print('Retrieved Product:', product.title)  # Debug: Product retrieval confirmation
 
         # Retrieve the Login instance, or return a 404 error if not found
@@ -40,17 +31,15 @@ class AddToCartView(GenericAPIView):
 
         # Check if the product is already in the cart
         cart_item, item_created = CartItem.objects.get_or_create(cart=cart, product=product)
-        
+
         if not item_created:
-            # If the cart item already exists, update its quantity
-            cart_item.quantity += quantity
-            cart_item.save()
-            print("Updated quantity for existing cart item:", cart_item.quantity)  # Debug: Quantity update
+            # If the cart item already exists, we don't need to update the quantity here
+            print("Cart item already exists, quantity unchanged:", cart_item.quantity)  # Debug: Existing item
         else:
-            # Set the quantity for the new cart item
-            cart_item.quantity = quantity
+            # Set the quantity to 1 for the new cart item
+            cart_item.quantity = 1
             cart_item.save()
-            print("New cart item created with quantity:", cart_item.quantity)  # Debug: New item creation
+            print("New cart item created with default quantity:", cart_item.quantity)  # Debug: New item creation
 
         return Response({"message": "Item added to cart successfully"}, status=status.HTTP_201_CREATED)
 

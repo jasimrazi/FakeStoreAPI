@@ -15,16 +15,27 @@ class AddAddressView(GenericAPIView):
         except Register.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Create a mutable copy of the request data and add the user to it
+        # Extract address details from the request
+        name = request.data.get('name')
+        address = request.data.get('address')
+        city = request.data.get('city')
+        country = request.data.get('country')
+        phone_number = request.data.get('phone_number')
+
+        # Check if the same address already exists for the user
+        if Address.objects.filter(
+            user=user,
+            name=name,
+            address=address,
+            city=city,
+            country=country,
+            phone_number=phone_number
+        ).exists():
+            return Response({"message": "Address already exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a mutable copy of the request data and add the user ID
         mutable_data = request.data.copy()
         mutable_data['user'] = user.id
-
-        # Check if this address is being added as the default
-        is_default = mutable_data.get('is_default', False)
-
-        if is_default:
-            # If a default address already exists for this user, set it to non-default
-            Address.objects.filter(user=user, is_default=True).update(is_default=False)
 
         # Create the address instance using the modified data
         serializer = self.get_serializer(data=mutable_data)
@@ -54,3 +65,22 @@ class GetAddressView(GenericAPIView):
         # Serialize and return the addresses
         serializer = self.get_serializer(addresses, many=True)
         return Response({"addresses": serializer.data}, status=status.HTTP_200_OK)
+    
+
+class RemoveAddressView(GenericAPIView):
+    def delete(self, request, loginid, address_id):
+        # Verify the user based on loginid
+        try:
+            user = Register.objects.get(loginid__loginid=loginid)
+        except Register.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get the specific address for the user
+        try:
+            address = Address.objects.get(id=address_id, user=user)
+        except Address.DoesNotExist:
+            return Response({"error": "Address not found for this user"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Delete the address
+        address.delete()
+        return Response({"message": "Address removed successfully"}, status=status.HTTP_200_OK)

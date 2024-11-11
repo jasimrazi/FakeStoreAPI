@@ -10,16 +10,15 @@ from user.models import Register
 
 # View to add a product to favourites
 class AddToFavouritesView(GenericAPIView):
-    def post(self, request, loginid):
+    def post(self, request, loginid, productid):
         # Get product ID from the request
-        product_id = request.data.get('product_id')
 
         # Ensure product ID is provided
-        if not product_id:
+        if not productid:
             return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Retrieve the product, or return a 404 error if not found
-        product = get_object_or_404(Product, id=product_id)
+        product = get_object_or_404(Product, id=productid)
 
         # Retrieve the user based on loginid, or return a 404 error if user does not exist
         user = get_object_or_404(Register, loginid__loginid=loginid)
