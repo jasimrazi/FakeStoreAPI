@@ -11,12 +11,9 @@ from rest_framework import status
 # Create your views here.
 class AddUserView(GenericAPIView):
     def get_serializer_class(self):
-        # Return the RegisterSerializer by default, as registration is the main action here
         return RegisterSerializer
 
     def post(self, request):
-        # Retrieve the input fields from the request
-        loginid = ""
         name = request.data.get("name")
         email = request.data.get("email")
         number = request.data.get("number")
@@ -42,36 +39,40 @@ class AddUserView(GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Step 3: Validate and create login
-        login_serializer = LoginSerializer(
-            data={"email": email, "password": password, "role": role}
-        )
-
+        # Step 3: Create the Login entry
+        login_serializer = LoginSerializer(data={"email": email, "password": password, "role": role})
+        
         if login_serializer.is_valid():
-            l = login_serializer.save()
-            loginid = l.id  # Store the login ID for registration
+            login_instance = login_serializer.save()
+            loginid = login_instance.loginid  # Save the UUID as loginid__loginid for Register
         else:
             return Response(
                 {"Message": "Login failed", "Errors": login_serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Step 4: Handle registration with the validated login id
+        # Step 4: Create Register with login instance
         register_serializer = RegisterSerializer(
             data={
                 "email": email,
                 "password": password,
-                "role": role,  # Hardcoded to "user"
+                "role": role,
                 "name": name,
                 "number": number,
-                "loginid": loginid,
+                "loginid": login_instance.id,  # Pass the actual login instance
             }
         )
 
         if register_serializer.is_valid():
-            register_serializer.save()
+            register_instance = register_serializer.save()
             return Response(
-                {"Message": "User account registered successfully"},
+                {
+                    "Message": "User account registered successfully",
+                    "data": {
+                        "name": register_instance.name,
+                        "loginid": str(login_instance.loginid),  # Convert loginid__loginid to string
+                    },
+                },
                 status=status.HTTP_200_OK,
             )
         else:
@@ -82,6 +83,8 @@ class AddUserView(GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
 
 class AddMerchantView(GenericAPIView):
     def get_serializer_class(self):
